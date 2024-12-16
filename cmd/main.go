@@ -1,8 +1,8 @@
 package main
 
 import (
-	shardedmap "awesomeProject/ShardedMaps"
 	"fmt"
+	shardedmap "github.com/Aashil0828/shardedmap"
 	"sync"
 	"time"
 )
