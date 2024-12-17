@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	shardedmap "github.com/Aashil0828/shardedmap"
+	shardedmap "github.com/Aashil0828/shardedmap/src"
 	"sync"
 	"time"
 )
