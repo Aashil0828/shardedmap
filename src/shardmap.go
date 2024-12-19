@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	MaxShardElements       = 1000
+	DefaultShardElements   = 1000
 	ShardNotExists         = "shard does not exist"
 	NegativeShardUnallowed = "negative shard cannot be initialized"
 )
@@ -30,9 +30,9 @@ func New[key comparable, value any](numShards int, useSwissMap bool) (*ShardMap[
 	shards := make([]Shard[key, value], numShards)
 	for i := 0; i < numShards; i++ {
 		if useSwissMap {
-			shards[i].data = NewSwissMap[key, value](MaxShardElements)
+			shards[i].data = NewSwissMap[key, value](DefaultShardElements)
 		} else {
-			shards[i].data = NewMap[key, value](MaxShardElements)
+			shards[i].data = NewMap[key, value](DefaultShardElements)
 		}
 	}
 	return &ShardMap[key, value]{
@@ -78,10 +78,7 @@ func (shmap *ShardMap[k, v]) RemoveAll() {
 	shmap.sharedLock.Lock()
 	defer shmap.sharedLock.Unlock()
 	for _, shard := range shmap.shards {
-		shard.data.Iter(func(key k, value v) bool {
-			shard.data.Remove(key)
-			return false
-		})
+		shard.data.Clear()
 	}
 }
 
@@ -127,4 +124,8 @@ func (shmap *ShardMap[k, v]) Contains(key k) bool {
 	defer shmap.shards[idx].lock.RUnlock()
 	_, ok := shmap.shards[idx].data.Get(key)
 	return ok
+}
+
+func (shmap *ShardMap[k, v]) NumShards() int {
+	return len(shmap.shards)
 }

@@ -74,20 +74,21 @@ func TestSet(t *testing.T) {
 			assertions.NotNil(shmap.shards[idx].data)
 			value, ok := shmap.shards[idx].data.Get("test")
 			assertions.True(ok)
-			assertions.Equal(value, 1)
+			assertions.Equal(1, value)
 		})
 	}
 
 }
 
 func TestGet(t *testing.T) {
+
 	assertions := assert.New(t)
 	for _, m := range mapTypes {
 		var Map MapInterface[string, int]
 		if m.name == "swiss" {
-			Map = NewSwissMap[string, int](MaxShardElements)
+			Map = NewSwissMap[string, int](DefaultShardElements)
 		} else {
-			Map = NewMap[string, int](MaxShardElements)
+			Map = NewMap[string, int](DefaultShardElements)
 		}
 		Map.Set("test", 1)
 		t.Run(m.name, func(t *testing.T) {
@@ -113,9 +114,9 @@ func TestRemove(t *testing.T) {
 	for _, m := range mapTypes {
 		var Map MapInterface[string, int]
 		if m.name == "swiss" {
-			Map = NewSwissMap[string, int](MaxShardElements)
+			Map = NewSwissMap[string, int](DefaultShardElements)
 		} else {
-			Map = NewMap[string, int](MaxShardElements)
+			Map = NewMap[string, int](DefaultShardElements)
 		}
 		Map.Set("test", 1)
 		t.Run(m.name, func(t *testing.T) {

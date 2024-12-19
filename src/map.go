@@ -8,6 +8,7 @@ type MapInterface[k comparable, v any] interface {
 	Remove(key k)
 	Iter(callback func(key k, value v) bool)
 	Len() int
+	Clear()
 }
 
 type Map[k comparable, v any] map[k]v
@@ -41,6 +42,10 @@ func (mp Map[k, v]) Len() int {
 	return len(mp)
 }
 
+func (mp Map[k, v]) Clear() {
+	clear(mp)
+}
+
 type SwissMap[k comparable, v any] struct {
 	data *swiss.Map[k, v]
 }
@@ -70,4 +75,8 @@ func (swsmap SwissMap[k, v]) Iter(callback func(key k, value v) bool) {
 
 func (swsmap SwissMap[k, v]) Len() int {
 	return swsmap.data.Count()
+}
+
+func (swsmap SwissMap[k, v]) Clear() {
+	swsmap.data.Clear()
 }
