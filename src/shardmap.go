@@ -118,7 +118,7 @@ func (shardMap *ShardMap) Contains(key string) bool {
 	return found
 }
 
-func (shardMap *ShardMap) NumShards() int {
+func (shardMap *ShardMap) Shards() int {
 
 	return len(shardMap.shards)
 

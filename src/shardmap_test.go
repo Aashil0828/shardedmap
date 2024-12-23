@@ -388,23 +388,23 @@ func TestShardMapContains(t *testing.T) {
 
 }
 
-func TestShardMapNumShards(t *testing.T) {
+func TestShardMapShards(t *testing.T) {
 
 	assertions := assert.New(t)
 
 	shardMap := NewShardMap(4)
 
-	assertions.Equal(4, shardMap.NumShards())
+	assertions.Equal(4, shardMap.Shards())
 
 }
 
 func BenchmarkShardMapNew(b *testing.B) {
 
-	NumShards := []int{10, 1000, 10000}
+	numShards := []int{10, 1000, 10000}
 
 	assertions := assert.New(b)
 
-	for _, shards := range NumShards {
+	for _, shards := range numShards {
 
 		b.Run(fmt.Sprintf("NumberOfShards-%d", shards), func(b *testing.B) {
 
