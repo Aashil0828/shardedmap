@@ -2,130 +2,139 @@ package src
 
 import (
 	"errors"
-	"github.com/dolthub/maphash"
-	"sync"
+	"fmt"
+	"github.com/go-faster/city"
 )
+
+type ShardMap struct {
+	shards []map[string]int
+}
 
 const (
-	DefaultShardElements   = 1000
-	ShardNotExists         = "shard does not exist"
-	NegativeShardUnallowed = "negative shard cannot be initialized"
+	DefaultShardRecords = 1000
+
+	ErrorShardNotExists = "shard %v does not exist"
 )
 
-type ShardMap[k comparable, v any] struct {
-	shards     []Shard[k, v]
-	hashfunc   maphash.Hasher[k]
-	sharedLock sync.RWMutex
-}
+func NewShardMap(numShards int) *ShardMap {
 
-type Shard[k comparable, v any] struct {
-	lock sync.RWMutex
-	data MapInterface[k, v]
-}
+	shards := make([]map[string]int, numShards)
 
-func New[key comparable, value any](numShards int, useSwissMap bool) (*ShardMap[key, value], error) {
-	if numShards < 1 {
-		return nil, errors.New(NegativeShardUnallowed)
+	for shard := 0; shard < len(shards); shard++ {
+
+		shards[shard] = make(map[string]int, DefaultShardRecords)
+
 	}
-	shards := make([]Shard[key, value], numShards)
-	for i := 0; i < numShards; i++ {
-		if useSwissMap {
-			shards[i].data = NewSwissMap[key, value](DefaultShardElements)
-		} else {
-			shards[i].data = NewMap[key, value](DefaultShardElements)
-		}
+
+	return &ShardMap{
+
+		shards: shards,
 	}
-	return &ShardMap[key, value]{
-		shards:   shards,
-		hashfunc: maphash.NewHasher[key](),
-	}, nil
 }
 
-func (shmap *ShardMap[k, v]) Set(key k, value v) {
-	shmap.sharedLock.RLock()
-	defer shmap.sharedLock.RUnlock()
-	idx := fastModN(uint32(shmap.hashfunc.Hash(key)), uint32(len(shmap.shards)))
-	shmap.shards[idx].lock.Lock()
-	defer shmap.shards[idx].lock.Unlock()
-	shmap.shards[idx].data.Set(key, value)
+func (shardMap *ShardMap) Set(key string, value int) {
+
+	shardMap.shards[shardMap.GetShardIndex(key)][key] = value
+
 }
 
-// lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
-func fastModN(x, n uint32) uint32 {
-	return uint32((uint64(x) * uint64(n)) >> 32)
-}
+func (shardMap *ShardMap) Get(key string) (value int, ok bool) {
 
-func (shmap *ShardMap[k, v]) Get(key k) (value v, ok bool) {
-	shmap.sharedLock.RLock()
-	defer shmap.sharedLock.RUnlock()
-	idx := fastModN(uint32(shmap.hashfunc.Hash(key)), uint32(len(shmap.shards)))
-	shmap.shards[idx].lock.RLock()
-	defer shmap.shards[idx].lock.RUnlock()
-	value, ok = shmap.shards[idx].data.Get(key)
+	value, ok = shardMap.shards[shardMap.GetShardIndex(key)][key]
+
 	return
 }
 
-func (shmap *ShardMap[k, v]) Remove(key k) {
-	shmap.sharedLock.RLock()
-	defer shmap.sharedLock.RUnlock()
-	idx := fastModN(uint32(shmap.hashfunc.Hash(key)), uint32(len(shmap.shards)))
-	shmap.shards[idx].lock.Lock()
-	defer shmap.shards[idx].lock.Unlock()
-	shmap.shards[idx].data.Remove(key)
+func (shardMap *ShardMap) Remove(key string) {
+
+	delete(shardMap.shards[shardMap.GetShardIndex(key)], key)
+
 }
 
-func (shmap *ShardMap[k, v]) RemoveAll() {
-	shmap.sharedLock.Lock()
-	defer shmap.sharedLock.Unlock()
-	for _, shard := range shmap.shards {
-		shard.data.Clear()
-	}
-}
+func (shardMap *ShardMap) RemoveAll() {
 
-func (shmap *ShardMap[k, v]) Iter(callback func(key k, value v) bool) {
-	shmap.sharedLock.Lock()
-	defer shmap.sharedLock.Unlock()
-	for _, shard := range shmap.shards {
-		shard.data.Iter(callback)
+	for _, shard := range shardMap.shards {
+
+		clear(shard)
+
 	}
 }
 
-func (shmap *ShardMap[k, v]) Len() int {
-	shmap.sharedLock.RLock()
-	defer shmap.sharedLock.RUnlock()
-	var total int
-	for _, shard := range shmap.shards {
-		total += shard.data.Len()
+func (shardMap *ShardMap) Iter(callback func(key string, value int) bool) {
+
+	for _, shard := range shardMap.shards {
+
+		for key, value := range shard {
+
+			if callback(key, value) {
+
+				break
+			}
+		}
 	}
-	return total
 }
 
-func (shmap *ShardMap[k, v]) IterShard(callback func(key k, value v) bool, n int) error {
-	if n > len(shmap.shards)-1 {
-		return errors.New(ShardNotExists)
+func (shardMap *ShardMap) Len() (size int) {
+
+	for _, shard := range shardMap.shards {
+
+		size += len(shard)
 	}
-	if n < 0 {
-		shmap.Iter(callback)
-	} else {
-		shmap.sharedLock.RLock()
-		defer shmap.sharedLock.RUnlock()
-		shmap.shards[n].lock.RLock()
-		defer shmap.shards[n].lock.RUnlock()
-		shmap.shards[n].data.Iter(callback)
+
+	return size
+}
+
+func (shardMap *ShardMap) IterShard(callback func(key string, value int) bool, shardIndex int) (error error) {
+
+	if shardIndex > len(shardMap.shards)-1 || shardIndex < -1 {
+
+		return errors.New(fmt.Sprintf(ErrorShardNotExists, shardIndex))
+
 	}
+
+	if shardIndex == -1 {
+
+		shardMap.Iter(callback)
+
+		return error
+
+	}
+
+	for key, value := range shardMap.shards[shardIndex] {
+
+		if callback(key, value) {
+
+			break
+		}
+	}
+
 	return nil
 }
 
-func (shmap *ShardMap[k, v]) Contains(key k) bool {
-	shmap.sharedLock.RLock()
-	defer shmap.sharedLock.RUnlock()
-	idx := fastModN(uint32(shmap.hashfunc.Hash(key)), uint32(len(shmap.shards)))
-	shmap.shards[idx].lock.RLock()
-	defer shmap.shards[idx].lock.RUnlock()
-	_, ok := shmap.shards[idx].data.Get(key)
-	return ok
+func (shardMap *ShardMap) Contains(key string) bool {
+
+	_, found := shardMap.shards[shardMap.GetShardIndex(key)][key]
+
+	return found
 }
 
-func (shmap *ShardMap[k, v]) NumShards() int {
-	return len(shmap.shards)
+func (shardMap *ShardMap) NumShards() int {
+
+	return len(shardMap.shards)
+
+}
+
+//-------------------------------------Helper Functions----------------------------------------------------------//
+
+// lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+func fastModN(x, n uint32) uint32 {
+
+	return uint32((uint64(x) * uint64(n)) >> 32)
+
+}
+
+func (shardMap *ShardMap) GetShardIndex(key string) uint32 {
+
+	return fastModN(uint32(city.Hash64([]byte(key))), uint32(len(shardMap.shards)))
+
 }

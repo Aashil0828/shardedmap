@@ -2,55 +2,42 @@ package src
 
 import (
 	"fmt"
-	"github.com/dolthub/maphash"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"testing"
 )
 
-var inputs = []int{
-	100,
-	10000,
-	100000,
-}
-
-var NumberOfShards = []int{
-	10,
-	100,
-	1000,
-}
-
-func TestNewShardMap(t *testing.T) {
+func TestNewShardSwissMap(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
-	assertions.NotNil(shardMap)
+	assertions.NotNil(shardSwissMap)
 
-	assertions.NotNil(shardMap.shards)
+	assertions.NotNil(shardSwissMap.shards)
 
-	for _, shard := range shardMap.shards {
+	for _, shard := range shardSwissMap.shards {
 
 		assertions.NotNil(shard)
 
 	}
 
-	assertions.Equal(len(shardMap.shards), 4)
+	assertions.Equal(len(shardSwissMap.shards), 4)
 
 }
 
-func TestShardMapSet(t *testing.T) {
+func TestShardSwissMapSet(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
-	shardMap.Set("test", 1)
+	shardSwissMap.Set("test", 1)
 
-	assertions.NotNil(shardMap.shards[shardMap.GetShardIndex("test")])
+	assertions.NotNil(shardSwissMap.shards[shardSwissMap.GetShardIndex("test")])
 
-	value, ok := shardMap.shards[shardMap.GetShardIndex("test")]["test"]
+	value, ok := shardSwissMap.shards[shardSwissMap.GetShardIndex("test")].Get("test")
 
 	assertions.True(ok)
 
@@ -58,17 +45,17 @@ func TestShardMapSet(t *testing.T) {
 
 }
 
-func TestShardMapGet(t *testing.T) {
+func TestShardSwissMapGet(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
-	assertions.NotNil(shardMap.shards[shardMap.GetShardIndex("test")])
+	assertions.NotNil(shardSwissMap.shards[shardSwissMap.GetShardIndex("test")])
 
-	shardMap.shards[shardMap.GetShardIndex("test")] = map[string]int{"test": 1}
+	shardSwissMap.Set("test", 1)
 
-	value, ok := shardMap.Get("test")
+	value, ok := shardSwissMap.Get("test")
 
 	assertions.True(ok)
 
@@ -76,7 +63,7 @@ func TestShardMapGet(t *testing.T) {
 
 	assertions.Equal(value, 1)
 
-	value, ok = shardMap.Get("test2")
+	value, ok = shardSwissMap.Get("test2")
 
 	assertions.False(ok)
 
@@ -84,96 +71,58 @@ func TestShardMapGet(t *testing.T) {
 
 }
 
-func TestShardMapRemove(t *testing.T) {
+func TestShardSwissMapRemove(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
-	assertions.NotNil(shardMap.shards[shardMap.GetShardIndex("test")])
+	assertions.NotNil(shardSwissMap.shards[shardSwissMap.GetShardIndex("test")])
 
-	shardMap.shards[shardMap.GetShardIndex("test")] = map[string]int{"test": 1}
+	shardSwissMap.Set("test", 1)
 
-	shardMap.Remove("test")
+	shardSwissMap.Remove("test")
 
-	_, ok := shardMap.shards[shardMap.GetShardIndex("test")]["test"]
+	_, ok := shardSwissMap.shards[shardSwissMap.GetShardIndex("test")].Get("test")
 
 	assertions.False(ok)
 
 }
 
-func TestShardMapRemoveAll(t *testing.T) {
+func TestShardSwissMapRemoveAll(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
 	var tests = map[string]int{"test1": 1, "test2": 2, "test3": 3}
 
 	for key, test := range tests {
 
-		shardMap.Set(key, test)
+		shardSwissMap.Set(key, test)
 
 	}
 
-	shardMap.RemoveAll()
+	shardSwissMap.RemoveAll()
 
-	for _, Shd := range shardMap.shards {
+	for _, shard := range shardSwissMap.shards {
 
-		assertions.Zero(len(Shd))
+		assertions.Zero(shard.Count())
 	}
 
 }
 
-func TestFastModN(t *testing.T) {
+func TestShardSwissMapIter(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	var testCases []struct {
-		Divisor uint32
-
-		Divident uint32
-
-		Remainder uint32
-	}
-
-	for i := 0; i < 100; i++ {
-
-		tc := struct {
-			Divisor uint32
-
-			Divident uint32
-
-			Remainder uint32
-		}{
-
-			Divisor: 1 + uint32(rand.Intn(100)),
-
-			Divident: uint32(maphash.NewHasher[int]().Hash(rand.Intn(100000))),
-		}
-		tc.Remainder = uint32(uint64(tc.Divident) * uint64(tc.Divisor) >> 32)
-
-		testCases = append(testCases, tc)
-
-	}
-	for _, tc := range testCases {
-
-		assertions.Equal(tc.Remainder, fastModN(tc.Divident, tc.Divisor))
-
-	}
-}
-
-func TestShardMapIter(t *testing.T) {
-
-	assertions := assert.New(t)
-
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
 	var tests = map[string]int{"test1": 1, "test2": 2, "test3": 3}
 
 	for key, test := range tests {
 
-		shardMap.Set(key, test)
+		shardSwissMap.Set(key, test)
 
 	}
 
@@ -181,7 +130,7 @@ func TestShardMapIter(t *testing.T) {
 
 		var visited = make(map[string]struct{})
 
-		shardMap.Iter(func(key string, value int) bool {
+		shardSwissMap.Iter(func(key string, value int) bool {
 
 			visited[key] = struct{}{}
 
@@ -189,15 +138,17 @@ func TestShardMapIter(t *testing.T) {
 
 		})
 
-		for _, shard := range shardMap.shards {
+		for _, shard := range shardSwissMap.shards {
 
-			for key := range shard {
+			shard.Iter(func(key string, value int) bool {
 
 				_, ok := visited[key]
 
 				assertions.True(ok)
 
-			}
+				return false
+
+			})
 
 		}
 
@@ -207,7 +158,7 @@ func TestShardMapIter(t *testing.T) {
 
 		var visited = make(map[string]struct{})
 
-		shardMap.Iter(func(key string, value int) bool {
+		shardSwissMap.Iter(func(key string, value int) bool {
 
 			if key == "test2" {
 
@@ -229,15 +180,15 @@ func TestShardMapIter(t *testing.T) {
 
 }
 
-func TestShardMapLen(t *testing.T) {
+func TestShardSwissMapLen(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
 	t.Run("Empty", func(t *testing.T) {
 
-		assertions.Equal(0, shardMap.Len())
+		assertions.Equal(0, shardSwissMap.Len())
 
 	})
 	t.Run("ValidCase", func(t *testing.T) {
@@ -246,27 +197,27 @@ func TestShardMapLen(t *testing.T) {
 
 		for key, test := range tests {
 
-			shardMap.Set(key, test)
+			shardSwissMap.Set(key, test)
 
 		}
 
-		assertions.Equal(3, shardMap.Len())
+		assertions.Equal(3, shardSwissMap.Len())
 
 	})
 
 }
 
-func TestShardMapIterShard(t *testing.T) {
+func TestShardSwissMapIterShard(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
 	var tests = map[string]int{"test1": 1, "test2": 2, "test3": 3, "test4": 4, "test5": 5}
 
 	for key, test := range tests {
 
-		shardMap.Set(key, test)
+		shardSwissMap.Set(key, test)
 
 	}
 
@@ -274,7 +225,7 @@ func TestShardMapIterShard(t *testing.T) {
 
 		visited := make(map[string]struct{})
 
-		err := shardMap.IterShard(func(key string, value int) bool {
+		err := shardSwissMap.IterShard(func(key string, value int) bool {
 
 			visited[key] = struct{}{}
 
@@ -284,22 +235,24 @@ func TestShardMapIterShard(t *testing.T) {
 
 		assertions.Nil(err)
 
-		for _, shard := range shardMap.shards {
+		for _, shard := range shardSwissMap.shards {
 
-			for key := range shard {
+			shard.Iter(func(key string, value int) bool {
 
 				_, ok := visited[key]
 
 				assertions.True(ok)
 
-			}
+				return false
+
+			})
 
 		}
 
 	})
 	t.Run("ShardOutOfRange", func(t *testing.T) {
 
-		err := shardMap.IterShard(func(key string, value int) bool {
+		err := shardSwissMap.IterShard(func(key string, value int) bool {
 
 			return false
 
@@ -312,7 +265,7 @@ func TestShardMapIterShard(t *testing.T) {
 
 		visited := make(map[string]struct{})
 
-		err := shardMap.IterShard(func(key string, value int) bool {
+		err := shardSwissMap.IterShard(func(key string, value int) bool {
 
 			visited[key] = struct{}{}
 
@@ -322,12 +275,15 @@ func TestShardMapIterShard(t *testing.T) {
 
 		assertions.Nil(err)
 
-		for key := range shardMap.shards[3] {
+		shardSwissMap.shards[3].Iter(func(key string, value int) bool {
 
 			_, ok := visited[key]
 
 			assertions.True(ok)
-		}
+
+			return false
+
+		})
 
 	})
 
@@ -335,18 +291,19 @@ func TestShardMapIterShard(t *testing.T) {
 
 		visited := make(map[string]struct{})
 
-		var stopkey string
+		var stopKey string
 
-		for key := range shardMap.shards[3] {
+		shardSwissMap.shards[3].Iter(func(key string, value int) bool {
 
-			stopkey = key
+			stopKey = key
 
-			break
-		}
+			return true
 
-		err := shardMap.IterShard(func(key string, value int) bool {
+		})
 
-			if key == stopkey {
+		err := shardSwissMap.IterShard(func(key string, value int) bool {
+
+			if key == stopKey {
 
 				return true
 
@@ -360,7 +317,7 @@ func TestShardMapIterShard(t *testing.T) {
 
 		assertions.Nil(err)
 
-		_, ok := visited[stopkey]
+		_, ok := visited[stopKey]
 
 		assertions.False(ok)
 
@@ -368,37 +325,37 @@ func TestShardMapIterShard(t *testing.T) {
 
 }
 
-func TestShardMapContains(t *testing.T) {
+func TestShardSwissMapContains(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
 	var tests = map[string]int{"test1": 1, "test2": 2, "test3": 3, "test4": 4, "test5": 5}
 
 	for key, test := range tests {
 
-		shardMap.Set(key, test)
+		shardSwissMap.Set(key, test)
 
 	}
 
-	assertions.False(shardMap.Contains("test10"))
+	assertions.False(shardSwissMap.Contains("test10"))
 
-	assertions.True(shardMap.Contains("test1"))
+	assertions.True(shardSwissMap.Contains("test1"))
 
 }
 
-func TestShardMapNumShards(t *testing.T) {
+func TestShardSwissMapNumShards(t *testing.T) {
 
 	assertions := assert.New(t)
 
-	shardMap := NewShardMap(4)
+	shardSwissMap := NewShardSwissMap(4)
 
-	assertions.Equal(4, shardMap.NumShards())
+	assertions.Equal(4, shardSwissMap.NumShards())
 
 }
 
-func BenchmarkShardMapNew(b *testing.B) {
+func BenchmarkShardSwissMapNew(b *testing.B) {
 
 	NumShards := []int{10, 1000, 10000}
 
@@ -412,9 +369,9 @@ func BenchmarkShardMapNew(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 
-				shardMap := NewShardMap(shards)
+				shardSwissMap := NewShardSwissMap(shards)
 
-				assertions.NotNil(shardMap)
+				assertions.NotNil(shardSwissMap)
 
 			}
 
@@ -424,15 +381,15 @@ func BenchmarkShardMapNew(b *testing.B) {
 
 }
 
-func BenchmarkShardMapSet(b *testing.B) {
+func BenchmarkShardSwissMapSet(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			setIndex := rand.Intn(elements)
 
@@ -442,7 +399,7 @@ func BenchmarkShardMapSet(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Set(fmt.Sprintf("test%v", setIndex), setIndex)
+					shardSwissMap.Set(fmt.Sprintf("test%v", setIndex), setIndex)
 
 				}
 
@@ -454,15 +411,15 @@ func BenchmarkShardMapSet(b *testing.B) {
 
 }
 
-func BenchmarkShardMapGet(b *testing.B) {
+func BenchmarkShardSwissMapGet(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -470,7 +427,7 @@ func BenchmarkShardMapGet(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Get(fmt.Sprintf("test%v", rand.Intn(elements)))
+					shardSwissMap.Get(fmt.Sprintf("test%v", rand.Intn(elements)))
 
 				}
 
@@ -482,15 +439,15 @@ func BenchmarkShardMapGet(b *testing.B) {
 
 }
 
-func BenchmarkShardMapIter(b *testing.B) {
+func BenchmarkShardSwissMapIter(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -498,7 +455,7 @@ func BenchmarkShardMapIter(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Iter(func(key string, value int) bool {
+					shardSwissMap.Iter(func(key string, value int) bool {
 
 						return false
 
@@ -514,15 +471,15 @@ func BenchmarkShardMapIter(b *testing.B) {
 
 }
 
-func BenchmarkShardMapRemove(b *testing.B) {
+func BenchmarkShardSwissMapRemove(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -530,7 +487,7 @@ func BenchmarkShardMapRemove(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Remove(fmt.Sprintf("test%v", rand.Intn(elements)))
+					shardSwissMap.Remove(fmt.Sprintf("test%v", rand.Intn(elements)))
 
 				}
 
@@ -542,15 +499,15 @@ func BenchmarkShardMapRemove(b *testing.B) {
 
 }
 
-func BenchmarkShardMapRemoveAll(b *testing.B) {
+func BenchmarkShardSwissMapRemoveAll(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -558,7 +515,7 @@ func BenchmarkShardMapRemoveAll(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.RemoveAll()
+					shardSwissMap.RemoveAll()
 
 				}
 
@@ -570,15 +527,15 @@ func BenchmarkShardMapRemoveAll(b *testing.B) {
 
 }
 
-func BenchmarkShardMapContains(b *testing.B) {
+func BenchmarkShardSwissMapContains(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -586,7 +543,7 @@ func BenchmarkShardMapContains(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Contains(fmt.Sprintf("test%v", rand.Intn(elements)))
+					shardSwissMap.Contains(fmt.Sprintf("test%v", rand.Intn(elements)))
 
 				}
 
@@ -598,15 +555,15 @@ func BenchmarkShardMapContains(b *testing.B) {
 
 }
 
-func BenchmarkShardMapLen(b *testing.B) {
+func BenchmarkShardSwissMapLen(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -614,7 +571,7 @@ func BenchmarkShardMapLen(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.Len()
+					shardSwissMap.Len()
 
 				}
 
@@ -626,15 +583,15 @@ func BenchmarkShardMapLen(b *testing.B) {
 
 }
 
-func BenchmarkShardMapIterShard(b *testing.B) {
+func BenchmarkShardSwissMapIterShard(b *testing.B) {
 
 	for _, elements := range inputs {
 
 		for _, shards := range NumberOfShards {
 
-			shardMap := NewShardMap(shards)
+			shardSwissMap := NewShardSwissMap(shards)
 
-			setElementsShardMap(shardMap, elements)
+			setElementsShardSwissMap(shardSwissMap, elements)
 
 			b.Run(fmt.Sprintf("elements-%d-shards-%d", elements, shards), func(b *testing.B) {
 
@@ -642,7 +599,7 @@ func BenchmarkShardMapIterShard(b *testing.B) {
 
 				for i := 0; i < b.N; i++ {
 
-					shardMap.IterShard(func(key string, value int) bool {
+					shardSwissMap.IterShard(func(key string, value int) bool {
 
 						return false
 
@@ -660,11 +617,11 @@ func BenchmarkShardMapIterShard(b *testing.B) {
 
 //-----------------------------------------------------Helper Functions-----------------------------------------------
 
-func setElementsShardMap(shardMap *ShardMap, elements int) {
+func setElementsShardSwissMap(shardSwissMap *ShardSwissMap, elements int) {
 
 	for i := 0; i < elements; i++ {
 
-		shardMap.Set(fmt.Sprintf("test%v", i), i)
+		shardSwissMap.Set(fmt.Sprintf("test%v", i), i)
 
 	}
 }
