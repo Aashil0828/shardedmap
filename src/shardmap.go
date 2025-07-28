@@ -47,6 +47,7 @@ func (shardMap *ShardMap) Get(key string) (value int, ok bool) {
 
 func (shardMap *ShardMap) Remove(key string) {
 
+	//remove key from the sharded map
 	delete(shardMap.shards[shardMap.GetShardIndex(key)], key)
 
 }
