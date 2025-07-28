@@ -47,12 +47,14 @@ func (shardMap *ShardMap) Get(key string) (value int, ok bool) {
 
 func (shardMap *ShardMap) Remove(key string) {
 
+	//remove key from the sharded map
 	delete(shardMap.shards[shardMap.GetShardIndex(key)], key)
 
 }
 
 func (shardMap *ShardMap) RemoveAll() {
 
+	//iterate over all shards and remove all
 	for _, shard := range shardMap.shards {
 
 		clear(shard)
@@ -62,6 +64,7 @@ func (shardMap *ShardMap) RemoveAll() {
 
 func (shardMap *ShardMap) Iter(callback func(key string, value int) bool) {
 
+	//range over all shards and print values
 	for _, shard := range shardMap.shards {
 
 		for key, value := range shard {
