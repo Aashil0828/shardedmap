@@ -62,6 +62,7 @@ func (shardMap *ShardMap) RemoveAll() {
 
 func (shardMap *ShardMap) Iter(callback func(key string, value int) bool) {
 
+	//range over all shards and print values
 	for _, shard := range shardMap.shards {
 
 		for key, value := range shard {
