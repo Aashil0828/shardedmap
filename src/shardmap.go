@@ -53,6 +53,7 @@ func (shardMap *ShardMap) Remove(key string) {
 
 func (shardMap *ShardMap) RemoveAll() {
 
+	//iterate over all shards and remove all
 	for _, shard := range shardMap.shards {
 
 		clear(shard)
